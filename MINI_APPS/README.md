@@ -22,22 +22,37 @@ MINI_APPS/
 
 ## API эндпоинты (POST на Webhook URL)
 
-| action       | описание                        | параметры                          |
-|--------------|---------------------------------|------------------------------------|
-| `get_news`   | Новости из RSS sntberezka4.ru   | `user_id`                          |
-| `check_user` | Проверка регистрации            | `user_id`                          |
-| `register`   | Регистрация пользователя        | `user_id`, `plot`, `surname`, `phone` |
-| `get_cabinet`| Данные участка + задолженность  | `user_id`                          |
+| action           | описание                            | параметры                                  |
+|------------------|-------------------------------------|--------------------------------------------|
+| `get_news`       | Новости из RSS sntberezka4.ru       | `user_id`                                  |
+| `check_user`     | Проверка регистрации                | `user_id`                                  |
+| `register`       | Регистрация пользователя            | `user_id`, `plot`, `surname`, `phone`      |
+| `get_cabinet`    | Данные участка + задолженность      | `user_id`                                  |
+| `get_payments`   | История платежей (лист Платежи)     | `user_id`                                  |
+| `update_contact` | Обновление номера телефона          | `user_id`, `phone`                         |
 
 ## Google Sheets
 
-**ID:** `1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk`
+ID задаётся через `SHEET_ID` в `.env` (см. `.env.example`).
 
 | Лист              | Назначение                           |
 |-------------------|--------------------------------------|
 | `РеестрСНТ`       | Основной реестр (Участок, Фамилия)   |
 | `РеестрТелеграм`  | Привязка MAX user_id к участку       |
 | `Должники`        | Задолженности (Участок, Задолженность)|
+| `Платежи`         | История платежей (Участок, Дата, Сумма, Описание) |
+
+## Генерация workflow
+
+```bash
+# Создать/обновить MINI_APPS/mini_app_engine_v2.json
+node generate_wf.js
+```
+
+Переменные окружения для кастомизации (в `.env`):
+- `SHEET_ID` — ID Google Sheets
+- `GOOGLE_CRED_ID` — ID credentials в n8n
+- `RSS_URL` — URL RSS-ленты
 
 ## Подключение к боту MAX
 
