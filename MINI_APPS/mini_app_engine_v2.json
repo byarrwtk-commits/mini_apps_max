@@ -1,0 +1,738 @@
+{
+  "name": "MINI_APP_ENGINE",
+  "nodes": [
+    {
+      "id": "489e6727-b036-4974-b195-4c454341600d",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mini-app",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "3e431ee3-0de5-4c24-a64e-e150eab8521e",
+      "name": "Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "c1",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "get_news",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "news"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "check_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "check"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "c3",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "register",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "register"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "c4",
+                    "leftValue": "={{ $json.body.action }}",
+                    "rightValue": "get_cabinet",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cabinet"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "4eaa8abd-8a40-42f7-98a4-9b7af093b2b9",
+      "name": "RSS Feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        720,
+        60
+      ],
+      "parameters": {
+        "url": "https://sntberezka4.ru/feed/",
+        "options": {}
+      }
+    },
+    {
+      "id": "95ca21b9-afda-4b0e-8bc1-ff1b1f8acc30",
+      "name": "Format News",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        60
+      ],
+      "parameters": {
+        "jsCode": "const news = items.map(i => ({\n  title: i.json.title || \"\",\n  date: i.json.pubDate || i.json.isoDate || \"\",\n  description: String(i.json.contentSnippet || i.json.summary || i.json.description || \"\").substring(0, 300),\n  link: i.json.link || \"\"\n}));\nreturn [{ json: { news } }];"
+      }
+    },
+    {
+      "id": "907cb3a1-e64d-42e7-a9a6-3eb2f8d27d10",
+      "name": "Respond News",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        60
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json.news) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "a32ef2fa-afcb-4459-b291-fac7f28c73cc",
+      "name": "Extract User Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        260
+      ],
+      "parameters": {
+        "jsCode": "const b = items[0].json.body || items[0].json;\nreturn [{ json: { user_id: String(b.user_id || b.userId || b.telegram_id || \"\") } }];"
+      }
+    },
+    {
+      "id": "23bb6363-a916-4ecf-8ad6-5c47405ad0ef",
+      "name": "Lookup User",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        960,
+        260
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x7Dt7uzZMaxnegVP",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "lookup",
+        "sheetId": "1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk",
+        "range": "РеестрТелеграм!A:Z",
+        "lookupColumn": "telegram_id",
+        "lookupValue": "={{ $json.user_id }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "40b618af-b02b-4b86-9fa3-63ef5d38af50",
+      "name": "Format Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        260
+      ],
+      "parameters": {
+        "jsCode": "const r = items[0].json;\nconst plot = r.plot_number || r[\"Участок\"] || r.plot || \"\";\nreturn [{ json: plot ? { registered: true, plot_number: String(plot) } : { registered: false } }];"
+      }
+    },
+    {
+      "id": "6904c9f8-57c2-4121-99ef-13358ac8511c",
+      "name": "Respond Check",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        260
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "7bd118d9-873c-4641-8c13-d64d180c29ad",
+      "name": "Prep Register",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        460
+      ],
+      "parameters": {
+        "jsCode": "const b = items[0].json.body || items[0].json;\nreturn [{ json: {\n  user_id: String(b.user_id || b.userId || \"\"),\n  plot:    String(b.plot || b.plot_number || \"\").trim(),\n  surname: String(b.surname || b.last_name || \"\").trim(),\n  phone:   String(b.phone || b.phone_number || \"\").trim().replace(/\\s+/g, \"\")\n} }];"
+      }
+    },
+    {
+      "id": "c240c3b0-5a6a-4a90-a839-b9c0ccfbf5c4",
+      "name": "Lookup Registry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        960,
+        460
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x7Dt7uzZMaxnegVP",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "lookup",
+        "sheetId": "1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk",
+        "range": "РеестрСНТ!A:Z",
+        "lookupColumn": "Участок",
+        "lookupValue": "={{ $json.plot }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "897408cb-93eb-4d9b-b0a4-96d243bf0b37",
+      "name": "Verify Registration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        460
+      ],
+      "parameters": {
+        "jsCode": "const regRow   = items[0].json;\nconst input    = $node[\"Prep Register\"].json;\n\nconst foundPlot = regRow[\"Участок\"] || regRow[\"участок\"] || regRow.plot || \"\";\nif (!foundPlot) return [{ json: { success: false, not_found: true } }];\n\nconst foundSurname = String(regRow[\"Фамилия\"] || regRow[\"фамилия\"] || regRow[\"ФИО\"] || \"\").toLowerCase();\nconst inputSurname = input.surname.toLowerCase();\nif (foundSurname && !foundSurname.includes(inputSurname)) {\n  return [{ json: { success: false, not_found: true } }];\n}\n\nreturn [{ json: { ok: true, plot: String(foundPlot), user_id: input.user_id, surname: input.surname, phone: input.phone } }];"
+      }
+    },
+    {
+      "id": "9e5425fa-aaf5-46cb-bba2-dfd73b166b9b",
+      "name": "Is Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        460
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cv",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "5b1afdec-d4e2-4ccc-8237-7a0299b7d794",
+      "name": "Write Registration",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        380
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x7Dt7uzZMaxnegVP",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "append",
+        "sheetId": "1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk",
+        "range": "РеестрТелеграм!A:Z",
+        "options": {}
+      }
+    },
+    {
+      "id": "08ada7ec-a02a-4e7a-8e47-9e77a968cab9",
+      "name": "Respond Reg OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        380
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "{\"success\":true}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "b174048d-79ea-4e66-bd21-880250e61362",
+      "name": "Respond Reg Fail",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        560
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "{\"success\":false,\"not_found\":true}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "83685952-ed25-4718-8283-25b5f7b84b36",
+      "name": "Extract User Cabinet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        660
+      ],
+      "parameters": {
+        "jsCode": "const b = items[0].json.body || items[0].json;\nreturn [{ json: { user_id: String(b.user_id || b.userId || b.telegram_id || \"\") } }];"
+      }
+    },
+    {
+      "id": "da8c0d2a-3139-485f-b0d7-8299e198ab1c",
+      "name": "Lookup Cabinet User",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        960,
+        660
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x7Dt7uzZMaxnegVP",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "lookup",
+        "sheetId": "1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk",
+        "range": "РеестрТелеграм!A:Z",
+        "lookupColumn": "telegram_id",
+        "lookupValue": "={{ $json.user_id }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "4c9cbd17-6df8-44f3-be72-c6c977b6dfa8",
+      "name": "Get Debt",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        660
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "x7Dt7uzZMaxnegVP",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "lookup",
+        "sheetId": "1O6VcZMgPrwYp-lxjv8t0Bfzy1BmwfrqZAVZx8PG-UQk",
+        "range": "Должники!A:Z",
+        "lookupColumn": "Участок",
+        "lookupValue": "={{ $json.plot_number || $json[\"plot_number\"] }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "82b75bf9-4239-4696-b766-96b9cb4ae6ed",
+      "name": "Format Cabinet",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        660
+      ],
+      "parameters": {
+        "jsCode": "const debtRow = items[0].json;\nconst regRow  = $node[\"Lookup Cabinet User\"].json;\nconst plot    = regRow.plot_number || regRow[\"plot_number\"] || regRow[\"Участок\"] || \"\";\nconst balance = debtRow[\"Задолженность\"] || debtRow[\"Долг\"] || debtRow.balance || \"0\";\nif (!plot) return [{ json: { registered: false } }];\nreturn [{ json: { registered: true, plot_number: String(plot), balance: String(balance) } }];"
+      }
+    },
+    {
+      "id": "ccd22865-f170-419c-9778-8a1baa79ff78",
+      "name": "Respond Cabinet",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        660
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract User Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Register",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract User Cabinet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Format News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format News": {
+      "main": [
+        [
+          {
+            "node": "Respond News",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User Check": {
+      "main": [
+        [
+          {
+            "node": "Lookup User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup User": {
+      "main": [
+        [
+          {
+            "node": "Format Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Check": {
+      "main": [
+        [
+          {
+            "node": "Respond Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Register": {
+      "main": [
+        [
+          {
+            "node": "Lookup Registry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Registry": {
+      "main": [
+        [
+          {
+            "node": "Verify Registration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Registration": {
+      "main": [
+        [
+          {
+            "node": "Is Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid": {
+      "main": [
+        [
+          {
+            "node": "Write Registration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Reg Fail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Registration": {
+      "main": [
+        [
+          {
+            "node": "Respond Reg OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User Cabinet": {
+      "main": [
+        [
+          {
+            "node": "Lookup Cabinet User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Cabinet User": {
+      "main": [
+        [
+          {
+            "node": "Get Debt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Debt": {
+      "main": [
+        [
+          {
+            "node": "Format Cabinet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Cabinet": {
+      "main": [
+        [
+          {
+            "node": "Respond Cabinet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

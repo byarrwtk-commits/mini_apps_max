@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Bridge</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>AI Assistant Chat</h1>
+            <div class="connection-status">
+                <span id="status">Disconnected</span>
+            </div>
+        </div>
+        
+        <div class="chat-messages" id="messages">
+            <div class="welcome-message">
+                <p>Добро пожаловать! Напишите сообщение для начала чата.</p>
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <input type="text" id="messageInput" placeholder="Введите ваше сообщение..." disabled>
+            <button id="sendButton" disabled>Отправить</button>
+        </div>
+        
+        <div class="session-info">
+            <small>Session ID: <span id="sessionId">-</span></small>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

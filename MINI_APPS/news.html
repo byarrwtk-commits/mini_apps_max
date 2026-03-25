@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Новости — СНТ Берёзка-4</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="header">
+    <button class="back-btn" onclick="history.back()">&#8592;</button>
+    <h1>Новости СНТ</h1>
+    <button class="back-btn" id="refreshBtn" onclick="loadNews(true)" title="Обновить" style="margin-left:auto">&#8635;</button>
+  </div>
+
+  <div class="container">
+    <div id="newsContainer">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    function escapeHtml(str) {
+      return str
+        .replace(/&amp;/g,  '&')
+        .replace(/&lt;/g,   '<')
+        .replace(/&gt;/g,   '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#039;/g, "'")
+        .replace(/&#8212;/g,'—')
+        .replace(/&nbsp;/g, ' ');
+    }
+
+    function stripHtml(str) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = str;
+      return escapeHtml(tmp.textContent || tmp.innerText || '');
+    }
+
+    function renderNews(items) {
+      const container = document.getElementById('newsContainer');
+      if (!items.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <p>Новостей пока нет</p>
+          </div>
+        `;
+        return;
+      }
+      const html = items.map(item => `
+        <div class="news-card">
+          <div class="news-date">${SNT.formatDate(item.date || item.pubDate)}</div>
+          <div class="news-title">${escapeHtml(item.title || '')}</div>
+          ${item.description ? `<div class="news-desc">${stripHtml(item.description)}</div>` : ''}
+          ${item.link ? `<a class="news-link" href="${item.link}" target="_blank">Читать полностью →</a>` : ''}
+        </div>
+      `).join('');
+      container.innerHTML = `<div class="news-list">${html}</div>`;
+    }
+
+    async function loadNews(forceRefresh = false) {
+      const container  = document.getElementById('newsContainer');
+      const refreshBtn = document.getElementById('refreshBtn');
+      if (refreshBtn) refreshBtn.disabled = true;
+
+      // Сразу показываем кэш, если есть
+      if (!forceRefresh) {
+        const cached = SNT.CONFIG && localStorage.getItem(SNT.CONFIG.NEWS_CACHE_KEY);
+        if (cached) {
+          try {
+            const { ts, data } = JSON.parse(cached);
+            if (Date.now() - ts < SNT.CONFIG.NEWS_CACHE_TTL && data.length) {
+              renderNews(data);
+              if (refreshBtn) refreshBtn.disabled = false;
+              return; // кэш свежий — не идём в сеть
+            }
+          } catch {}
+        }
+      }
+
+      container.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+
+      try {
+        const items = await SNT.getNews(forceRefresh);
+        renderNews(items);
+      } catch (err) {
+        container.innerHTML = `
+          <div class="alert alert-error">
+            Не удалось загрузить новости. Проверьте соединение.
+          </div>
+        `;
+        console.error(err);
+      } finally {
+        if (refreshBtn) refreshBtn.disabled = false;
+      }
+    }
+
+    loadNews();
+  </script>
+
+</body>
+</html>

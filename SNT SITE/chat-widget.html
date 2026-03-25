@@ -1,0 +1,190 @@
+<div id="chat-widget" style="position: fixed; bottom: 20px; right: 50px; z-index: 99999;">
+  <button id="chat-toggle" style="width: 50px; height: 50px; border-radius: 50%; background-color: #42913b; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+    <svg width="70" height="70" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 23px;">
+      <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" fill="#42913b"/>
+      <path d="M8 12C8 12 9.5 14 12 14C14.5 14 16 12 16 12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="9" cy="9" r="1" fill="white"/>
+      <circle cx="15" cy="9" r="1" fill="white"/>
+    </svg>
+  </button>
+  
+  <div id="chat-window" style="display: none; position: absolute; bottom: 70px; right: 0; width: 400px; height: 600px; background-color: #fcfcfc; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); overflow: hidden; flex-direction: column;">
+    <div style="background: #42913b; padding: 15px; display: flex; align-items: center; gap: 10px;">
+      <svg width="41" height="41" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius: 22px;">
+        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z" fill="#42913b"/>
+        <path d="M8 12C8 12 9.5 14 12 14C14.5 14 16 12 16 12" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="9" cy="9" r="1" fill="white"/>
+        <circle cx="15" cy="9" r="1" fill="white"/>
+      </svg>
+      <span style="color: white; font-size: 16px; font-family: system-ui, sans-serif; flex: 1;">Я ИИ-помощник председателя</span>
+      <button id="chat-refresh" title="Очистить чат" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: 0.85;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="white"/>
+        </svg>
+      </button>
+      <button id="chat-close" title="Закрыть" style="background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; opacity: 0.85;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="white"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div id="chat-messages" style="flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="background: #ffffff; color: #141414; padding: 10px; border-radius: 6px; max-width: 80%; align-self: flex-start; font-size: 16px;">Задайте вопрос — я помогу!</div>
+    </div>
+    
+    <div style="padding: 15px; border-top: 1px solid #eee;">
+      <div style="display: flex; gap: 10px;">
+        <input type="text" id="chat-input" placeholder="Введите свой вопрос..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 16px; background: #ffffff; color: #1e1e1f; outline: none;">
+        <button id="chat-send" style="width: 40px; height: 40px; border-radius: 16px; background: #1e1e1f; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+            <path d="M2.01 21L23 12L2.01 3L2 10L17 12L2 14L2.01 21Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes blink {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+.chat-msg-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  position: relative;
+}
+.chat-msg-wrap.user { align-self: flex-end; }
+.chat-msg-wrap.bot { align-self: flex-start; }
+.chat-copy-btn {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  padding: 0;
+}
+.chat-msg-wrap.user .chat-copy-btn { right: -10px; left: auto; }
+.chat-msg-wrap.bot .chat-copy-btn { right: -10px; }
+.chat-msg-wrap:hover .chat-copy-btn { opacity: 1; }
+.chat-copy-btn:hover { background: #f0f0f0; }
+.chat-copy-btn svg { pointer-events: none; }
+</style>
+
+<script>
+const WEBHOOK_URL = "https://vibe.umnode.ru/webhook/bf44160e-dcd6-46cf-90ef-1c19f645e8a9/chat";
+
+document.getElementById('chat-toggle').onclick = function() {
+  var win = document.getElementById('chat-window');
+  win.style.display = win.style.display === 'none' ? 'flex' : 'none';
+};
+
+document.getElementById('chat-close').onclick = function() {
+  document.getElementById('chat-window').style.display = 'none';
+};
+
+document.getElementById('chat-refresh').onclick = function() {
+  var messages = document.getElementById('chat-messages');
+  messages.innerHTML = '<div style="background: #ffffff; color: #141414; padding: 10px; border-radius: 6px; max-width: 80%; align-self: flex-start; font-size: 16px;">Задайте вопрос — я помогу!</div>';
+};
+
+document.getElementById('chat-send').onclick = async function() {
+  var input = document.getElementById('chat-input');
+  var messages = document.getElementById('chat-messages');
+  var question = input.value;
+  
+  if (!question.trim()) return;
+  
+  var userWrap = document.createElement('div');
+  userWrap.className = 'chat-msg-wrap user';
+  var userMsg = document.createElement('div');
+  userMsg.style.cssText = 'background: #53763d; color: #ffffff; padding: 10px; border-radius: 6px; font-size: 16px;';
+  userMsg.textContent = question;
+  var userCopy = document.createElement('button');
+  userCopy.className = 'chat-copy-btn';
+  userCopy.title = 'Вставить в поле';
+  userCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="#888"/></svg>';
+  userCopy.onclick = function() {
+    document.getElementById('chat-input').value = question;
+    document.getElementById('chat-input').focus();
+    userCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#42913b"/></svg>';
+    setTimeout(function(){ userCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="#888"/></svg>'; }, 1500);
+  };
+  userWrap.appendChild(userMsg);
+  userWrap.appendChild(userCopy);
+  messages.appendChild(userWrap);
+  
+  input.value = '';
+  messages.scrollTop = messages.scrollHeight;
+
+  // Индикатор "думает"
+  var typing = document.createElement('div');
+  typing.id = 'chat-typing';
+  typing.style.cssText = 'background: #ffffff; color: #141414; padding: 10px 14px; border-radius: 6px; max-width: 80%; align-self: flex-start; font-size: 16px; display: flex; gap: 5px; align-items: center;';
+  typing.innerHTML = '<span class="dot" style="width:8px;height:8px;border-radius:50%;background:#42913b;animation:blink 1.2s infinite 0s"></span><span class="dot" style="width:8px;height:8px;border-radius:50%;background:#42913b;animation:blink 1.2s infinite 0.4s"></span><span class="dot" style="width:8px;height:8px;border-radius:50%;background:#42913b;animation:blink 1.2s infinite 0.8s"></span>';
+  messages.appendChild(typing);
+  messages.scrollTop = messages.scrollHeight;
+
+  try {
+    var response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({chatInput: question, sessionId: "user-" + Date.now()})
+    });
+    
+    var data = await response.json();
+    var botText = data.output || data.text || data.message || data.response || (Array.isArray(data) && data[0] && (data[0].output || data[0].text)) || JSON.stringify(data);
+    
+    var t = document.getElementById('chat-typing');
+    if (t) t.remove();
+
+    var botWrap = document.createElement('div');
+    botWrap.className = 'chat-msg-wrap bot';
+    var botMsg = document.createElement('div');
+    botMsg.style.cssText = 'background: #ffffff; color: #141414; padding: 10px; border-radius: 6px; font-size: 16px; text-align: left; word-break: break-word; white-space: pre-wrap;';
+    botMsg.textContent = botText;
+  var botCopy = document.createElement('button');
+  botCopy.className = 'chat-copy-btn';
+  botCopy.title = 'Вставить в поле';
+  botCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="#888"/></svg>';
+  botCopy.onclick = function() {
+    document.getElementById('chat-input').value = botText;
+    document.getElementById('chat-input').focus();
+    botCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" fill="#42913b"/></svg>';
+    setTimeout(function(){ botCopy.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="#888"/></svg>'; }, 1500);
+  };
+  botWrap.appendChild(botMsg);
+  botWrap.appendChild(botCopy);
+    messages.appendChild(botWrap);
+  } catch(e) {
+    var t = document.getElementById('chat-typing');
+    if (t) t.remove();
+
+    var errorMsg = document.createElement('div');
+    errorMsg.style.cssText = 'background: #ffebee; color: #c62828; padding: 10px; border-radius: 6px; max-width: 80%; align-self: flex-start; font-size: 16px;';
+    errorMsg.textContent = 'Ошибка соединения';
+    messages.appendChild(errorMsg);
+  }
+  
+  messages.scrollTop = messages.scrollHeight;
+};
+
+document.getElementById('chat-input').onkeypress = function(e) {
+  if (e.key === 'Enter') {
+    document.getElementById('chat-send').click();
+  }
+};
+</script>

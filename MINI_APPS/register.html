@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Регистрация — СНТ Берёзка-4</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="header">
+    <button class="back-btn" onclick="history.back()">&#8592;</button>
+    <h1>Регистрация</h1>
+  </div>
+
+  <div class="container">
+
+    <div class="alert alert-info">
+      Для доступа к данным вашего участка необходимо пройти регистрацию. Укажите данные, которые есть в реестре СНТ.
+    </div>
+
+    <div class="form-card">
+      <div class="form-group">
+        <label for="plotInput">Номер участка *</label>
+        <input
+          type="number"
+          id="plotInput"
+          placeholder="Например: 42"
+          min="1"
+          max="999"
+          inputmode="numeric"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="surnameInput">Фамилия *</label>
+        <input
+          type="text"
+          id="surnameInput"
+          placeholder="Например: Иванов"
+          autocomplete="family-name"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="phoneInput">Телефон (как в реестре СНТ) *</label>
+        <input
+          type="tel"
+          id="phoneInput"
+          placeholder="+7 (999) 123-45-67 или последние 4 цифры"
+          autocomplete="tel"
+          inputmode="tel"
+        >
+        <small style="color:#999;font-size:12px;margin-top:4px;display:block">
+          Достаточно совпадения фамилии ИЛИ телефона из реестра
+        </small>
+      </div>
+
+      <div id="formMessage"></div>
+
+      <button class="btn btn-primary mt-16" id="submitBtn" onclick="handleSubmit()">
+        Зарегистрироваться
+      </button>
+    </div>
+
+    <p class="text-muted text-center mt-16">
+      Если ваши данные не найдены в реестре — обратитесь в правление СНТ:<br>
+      <a href="https://sntberezka4.ru" target="_blank" style="color:#388e3c">sntberezka4.ru</a>
+    </p>
+
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    async function handleSubmit() {
+      const plotInput   = document.getElementById('plotInput');
+      const surnameInput = document.getElementById('surnameInput');
+      const phoneInput  = document.getElementById('phoneInput');
+      const submitBtn   = document.getElementById('submitBtn');
+      const formMessage = document.getElementById('formMessage');
+
+      const plot   = plotInput.value.trim();
+      const surname = surnameInput.value.trim();
+      const phone  = phoneInput.value.trim().replace(/\s/g, '');
+
+      // Валидация
+      if (!plot || !surname || !phone) {
+        formMessage.innerHTML = '<div class="alert alert-error">Заполните все поля</div>';
+        return;
+      }
+
+      if (!/^\d+$/.test(plot)) {
+        formMessage.innerHTML = '<div class="alert alert-error">Номер участка должен быть числом</div>';
+        return;
+      }
+
+      if (phone.length < 10) {
+        formMessage.innerHTML = '<div class="alert alert-error">Введите корректный номер телефона</div>';
+        return;
+      }
+
+      // Отправка
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Проверяем данные...';
+      formMessage.innerHTML = '';
+
+      try {
+        const result = await SNT.registerUser(plot, surname, phone);
+
+        if (result.success) {
+          // Сохраняем кэш с номером участка
+          SNT.saveUser({ registered: true, plot_number: plot });
+          formMessage.innerHTML = '<div class="alert alert-success">Регистрация успешна! Переходим...</div>';
+
+          // Ждём 2.5 сек — Google Sheets нужно время записать данные
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 2500);
+
+        } else if (result.not_found) {
+          formMessage.innerHTML = `
+            <div class="alert alert-error">
+              Данные не найдены в реестре СНТ. Проверьте правильность введённых данных или обратитесь в правление.
+            </div>
+          `;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Зарегистрироваться';
+
+        } else if (result.already_registered) {
+          formMessage.innerHTML = `
+            <div class="alert alert-info">
+              Этот участок уже привязан к другому аккаунту. Обратитесь в правление СНТ.
+            </div>
+          `;
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Зарегистрироваться';
+
+        } else {
+          formMessage.innerHTML = '<div class="alert alert-error">Неизвестная ошибка. Попробуйте позже.</div>';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Зарегистрироваться';
+        }
+
+      } catch (err) {
+        formMessage.innerHTML = '<div class="alert alert-error">Ошибка соединения. Проверьте интернет.</div>';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Зарегистрироваться';
+        console.error(err);
+      }
+    }
+
+    // Enter submit
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleSubmit();
+    });
+  </script>
+
+</body>
+</html>

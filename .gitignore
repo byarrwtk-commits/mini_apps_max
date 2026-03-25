@@ -1,0 +1,12 @@
+# Зависимости
+node_modules/
+
+# Секреты и конфиги с токенами
+.env
+opencode.jsonc
+mcp-config.json
+
+# Системные
+.DS_Store
+Thumbs.db
+*.log

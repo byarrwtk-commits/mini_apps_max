@@ -1,0 +1,235 @@
+{
+  "name": "СНТ_ЧАТ-БОТ_МАКС",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=Ты — виртуальный помощник председателя СНТ «Берёзка‑4». Отвечай в мужском роде. Твоя цель — помогать садоводам, отвечать по делу и создавать ощущение тёплого, уважительного сообщества. Не используй канцелярский тон, будь доброжелательным, но без лишней воды."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-64, 304],
+      "id": "6a61162b-cf5e-426c-b7bb-759e3cbbe936",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": { "options": {} },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [176, 560],
+      "id": "c19c87d1-0e82-4745-a6a6-ea9081ff6cdb",
+      "name": "Embeddings OpenAI1",
+      "credentials": { "openAiApi": { "id": "pAa66YRsVoP3Q6a9", "name": "OpenAi byarrwtk" } }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "RAG tool, vector store",
+        "tableName": { "__rl": true, "value": "documents", "mode": "list", "cachedResultName": "documents" },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [288, 432],
+      "id": "ff74d73c-35ef-4f4f-beb2-bfbbbcffa011",
+      "name": "Supabase Vector Store",
+      "credentials": { "supabaseApi": { "id": "j7twMr79XQu4Vb0Q", "name": "Supabase СНТ ЧАТ(barrwtk )" } }
+    },
+    {
+      "parameters": { "sessionIdType": "customKey", "sessionKey": "=user_{{ $json.message.from.id }}" },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [-96, 512],
+      "id": "a0198729-97ea-484b-b1c7-7668faaa5350",
+      "name": "Postgres Chat Memory",
+      "credentials": { "postgres": { "id": "9Fwnl3nUjnT1ri11", "name": "Postgres account" } }
+    },
+    {
+      "parameters": { "options": {} },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [-240, 512],
+      "id": "33d0d689-57dd-4441-8c25-42d41a5ef17f",
+      "name": "OpenRouter Chat Model",
+      "credentials": { "openRouterApi": { "id": "TImwqyllQ719g9GZ", "name": "OpenRouter account" } }
+    },
+    {
+      "parameters": {
+        "model": "sonar-pro",
+        "messages": {
+          "message": [
+            { "content": "Ты — помощник по российскому законодательству в сфере СНТ и земельных отношений.", "role": "system" },
+            { "content": "={{ $fromAI('query', 'Поисковый запрос') }}" }
+          ]
+        },
+        "simplify": true
+      },
+      "id": "1c3f7c05-ab7d-46fb-a548-08daca8f0649",
+      "name": "Perplexity Search Tool",
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [64, 512],
+      "credentials": { "perplexityApi": { "id": "6OJKSQQCFcAE5IFv", "name": "Perplexity account" } }
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "recipientId": "={{ $('Max Trigger').first().json.message.chat.id }}",
+        "messageText": "={{ $json.output }}"
+      },
+      "id": "e1a2d858-26f1-405c-822a-eb21c101ed4c",
+      "name": "Send Text Response",
+      "type": "n8n-nodes-max.max",
+      "typeVersion": 1,
+      "position": [224, 112],
+      "credentials": { "maxApi": { "id": "0odgmE9kqTdiKUdB", "name": "Max СНТ_ЧАТ-БОТ" } }
+    },
+    {
+      "parameters": { "options": {} },
+      "id": "3d8cc6ee-3836-4b1a-a153-f35fc390a9fc",
+      "name": "OpenRouter Image LM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [400, 288],
+      "credentials": { "openRouterApi": { "id": "TImwqyllQ719g9GZ", "name": "OpenRouter account" } }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Тема: ' + $('Max Trigger').first().json.message.text }}",
+        "options": { "systemMessage": "Create a SHORT funny English prompt (max 60 words) for a humorous cartoon scene in Russian garden community SNT." }
+      },
+      "id": "ea161e4b-5e41-4b32-8a7c-24b7a927dd90",
+      "name": "Create Funny Image Prompt",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [400, 112]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.together.xyz/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "Bearer YOUR_TOKEN_HERE" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"black-forest-labs/FLUX.1-schnell\",\n  \"prompt\": {{ $json.output }},\n  \"width\": 1024,\n  \"height\": 1024,\n  \"steps\": 4,\n  \"n\": 1,\n  \"response_format\": \"b64_json\"\n}",
+        "options": { "response": { "response": { "fullResponse": true } } }
+      },
+      "id": "dd4efcc2-964d-4b2b-af7e-7fe72262f8be",
+      "name": "Generate Bonus Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 112],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "b64-field", "name": "base64", "value": "={{ $json.body.data[0].b64_json }}", "type": "string" }
+          ]
+        }
+      },
+      "id": "181c170e-5fd3-413b-b7f3-3bf2220a39cc",
+      "name": "Extract Image Base64",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [880, 112],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": { "operation": "toBinary", "sourceProperty": "base64" },
+      "id": "de7f2299-ba8f-40f8-9abd-2f186f9574f3",
+      "name": "Convert Image to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [1120, 112],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "sendFile",
+        "recipientId": "={{ $('Max Trigger').first().json.message.chat.id }}",
+        "messageText": "Бонусная картинка от СНТ Берёзка-4!",
+        "binaryProperty": "data"
+      },
+      "id": "8b232094-9e8a-455f-a0b2-4fcbffae7dc7",
+      "name": "Send Bonus Image",
+      "type": "n8n-nodes-max.max",
+      "typeVersion": 1,
+      "position": [1456, 352],
+      "credentials": { "maxApi": { "id": "0odgmE9kqTdiKUdB", "name": "Max СНТ_ЧАТ-БОТ" } },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            { "id": "start-check", "leftValue": "={{ $json.message.body.text }}", "rightValue": "/start", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "ac7c7e88-fb93-4a4a-bc30-0393881571d9",
+      "name": "Is /start?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-272, 304]
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage",
+        "recipientId": "={{ $('Max Trigger').first().json.message.chat.id }}",
+        "messageText": "=Привет, {{ $('Max Trigger').first().json.message.from.first_name }}! Я — виртуальный помощник СНТ Берёзка-4. Напишите ваш вопрос!"
+      },
+      "id": "5594c633-93e4-4ccb-b280-77ea0fceb456",
+      "name": "Send Welcome Message",
+      "type": "n8n-nodes-max.max",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "credentials": { "maxApi": { "id": "0odgmE9kqTdiKUdB", "name": "Max СНТ_ЧАТ-БОТ" } }
+    },
+    {
+      "parameters": { "events": ["message_created", "bot_started"], "additionalFields": {} },
+      "type": "n8n-nodes-max.maxTrigger",
+      "typeVersion": 1,
+      "position": [-464, 304],
+      "id": "a0fd2c98-0401-43aa-8175-8c32ccf0414d",
+      "name": "Max Trigger",
+      "webhookId": "386e7ebb-5786-45c5-864e-a09b6dad21d9",
+      "credentials": { "maxApi": { "id": "0odgmE9kqTdiKUdB", "name": "Max СНТ_ЧАТ-БОТ" } }
+    }
+  ],
+  "connections": {
+    "AI Agent": { "main": [[{ "node": "Send Text Response", "type": "main", "index": 0 }]] },
+    "Embeddings OpenAI1": { "ai_embedding": [[{ "node": "Supabase Vector Store", "type": "ai_embedding", "index": 0 }]] },
+    "Supabase Vector Store": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Postgres Chat Memory": { "ai_memory": [[{ "node": "AI Agent", "type": "ai_memory", "index": 0 }]] },
+    "OpenRouter Chat Model": { "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]] },
+    "Perplexity Search Tool": { "ai_tool": [[{ "node": "AI Agent", "type": "ai_tool", "index": 0 }]] },
+    "Send Text Response": { "main": [[{ "node": "Create Funny Image Prompt", "type": "main", "index": 0 }]] },
+    "OpenRouter Image LM": { "ai_languageModel": [[{ "node": "Create Funny Image Prompt", "type": "ai_languageModel", "index": 0 }]] },
+    "Create Funny Image Prompt": { "main": [[{ "node": "Generate Bonus Image", "type": "main", "index": 0 }]] },
+    "Generate Bonus Image": { "main": [[{ "node": "Extract Image Base64", "type": "main", "index": 0 }]] },
+    "Extract Image Base64": { "main": [[{ "node": "Convert Image to File", "type": "main", "index": 0 }]] },
+    "Convert Image to File": { "main": [[{ "node": "Send Bonus Image", "type": "main", "index": 0 }]] },
+    "Is /start?": {
+      "main": [
+        [{ "node": "Send Welcome Message", "type": "main", "index": 0 }],
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Max Trigger": { "main": [[{ "node": "Is /start?", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "4cfYZKHNMH6SMPdv"
+}

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>СНТ Берёзка-4</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">🌿</div>
+    <h1>СНТ «Берёзка-4»</h1>
+  </div>
+
+  <div class="container">
+
+    <!-- Приветствие -->
+    <div class="welcome-block">
+      <h2>Добро пожаловать!</h2>
+      <p id="welcomeText">Загрузка...</p>
+    </div>
+
+    <!-- Меню -->
+    <div class="menu-grid">
+      <a href="news.html" class="menu-card">
+        <span class="icon">📰</span>
+        <span class="label">Новости СНТ</span>
+      </a>
+      <a href="cabinet.html" class="menu-card">
+        <span class="icon">🏡</span>
+        <span class="label">Мой участок</span>
+      </a>
+    </div>
+
+    <!-- Статус загрузки -->
+    <div id="statusBlock" class="mt-24"></div>
+
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    (async () => {
+      const statusBlock = document.getElementById('statusBlock');
+      const welcomeText = document.getElementById('welcomeText');
+
+      try {
+        // 1. Быстро показываем кэш если есть
+        const cached = SNT.getUser();
+        if (cached && cached.registered && cached.plot_number) {
+          welcomeText.textContent = `Участок №${cached.plot_number}`;
+        } else {
+          welcomeText.textContent = 'Проверка доступа...';
+        }
+
+        // 2. Всегда проверяем через API (в фоне)
+        const result = await SNT.checkUser();
+
+        if (result.registered) {
+          SNT.saveUser({ registered: true, plot_number: result.plot_number });
+          welcomeText.textContent = `Участок №${result.plot_number}`;
+        } else {
+          // Сбрасываем устаревший кэш
+          SNT.saveUser(null);
+          welcomeText.textContent = 'Требуется регистрация';
+          statusBlock.innerHTML = `
+            <div class="alert alert-info">
+              Вы ещё не зарегистрированы в системе СНТ. Пожалуйста, пройдите регистрацию.
+            </div>
+            <a href="register.html" class="btn btn-primary mt-16">Зарегистрироваться</a>
+          `;
+        }
+      } catch (err) {
+        welcomeText.textContent = 'Ошибка соединения';
+        statusBlock.innerHTML = `
+          <div class="alert alert-error">
+            Не удалось подключиться к серверу. Проверьте интернет-соединение.
+          </div>
+        `;
+        console.error(err);
+      }
+    })();
+  </script>
+
+</body>
+</html>

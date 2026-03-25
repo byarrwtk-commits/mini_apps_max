@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Чат</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        .chat-container {
+            height: calc(100vh - 120px);
+        }
+        .message-bubble {
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+        .typing-indicator {
+            display: none;
+        }
+        .typing-indicator.active {
+            display: inline-block;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #10b981;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-6 max-w-6xl">
+        <!-- Заголовок и выбор модели -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h1 class="text-3xl font-bold text-gray-800">AI Чат</h1>
+                <div class="flex items-center space-x-4">
+                    <label for="model-select" class="text-gray-700 font-medium">Модель:</label>
+                    <select id="model-select" class="border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                        <option value="gpt-4">GPT-4</option>
+                        <option value="claude-3-haiku">Claude 3 Haiku</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                        <option value="gemini-pro">Gemini Pro</option>
+                    </select>
+                    <button id="clear-chat" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition duration-200">
+                        Очистить чат
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Окно чата -->
+        <div class="bg-white rounded-lg shadow-lg p-4 mb-4 chat-container overflow-y-auto" id="chat-container">
+            <div class="space-y-4" id="messages">
+                <!-- Сообщения будут добавляться сюда -->
+            </div>
+        </div>
+
+        <!-- Поле ввода -->
+        <div class="flex items-center space-x-4">
+            <input 
+                type="text" 
+                id="message-input" 
+                placeholder="Введите ваше сообщение..." 
+                class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+            <button 
+                id="send-button" 
+                class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition duration-200 flex items-center space-x-2"
+            >
+                <span>Отправить</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+            </button>
+            <div class="typing-indicator" id="typing-indicator">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AIChat {
+            constructor() {
+                this.chatContainer = document.getElementById('chat-container');
+                this.messagesContainer = document.getElementById('messages');
+                this.messageInput = document.getElementById('message-input');
+                this.sendButton = document.getElementById('send-button');
+                this.modelSelect = document.getElementById('model-select');
+                this.clearButton = document.getElementById('clear-chat');
+                this.typingIndicator = document.getElementById('typing-indicator');
+                
+                this.messages = this.loadMessages();
+                this.init();
+            }
+
+            init() {
+                // Обработчики событий
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+                this.clearButton.addEventListener('click', () => this.clearChat());
+                
+                // Загрузка сообщений
+                this.renderMessages();
+                this.scrollToBottom();
+            }
+
+            loadMessages() {
+                const saved = localStorage.getItem('ai-chat-messages');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            saveMessages() {
+                localStorage.setItem('ai-chat-messages', JSON.stringify(this.messages));
+            }
+
+            renderMessages() {
+                this.messagesContainer.innerHTML = '';
+                this.messages.forEach(msg => this.addMessageToUI(msg));
+            }
+
+            addMessageToUI(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = `message-bubble p-3 rounded-lg ${
+                    message.sender === 'user' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'bg-gray-200 text-gray-800'
+                }`;
+                
+                messageContent.innerHTML = `
+                    <div class="text-sm opacity-75 mb-1">${message.sender === 'user' ? 'Вы' : message.model}</div>
+                    <div>${message.text}</div>
+                `;
+                
+                messageDiv.appendChild(messageContent);
+                this.messagesContainer.appendChild(messageDiv);
+            }
+
+            addMessage(text, sender, model = null) {
+                const message = {
+                    text,
+                    sender,
+                    model: model || this.modelSelect.value,
+                    timestamp: new Date().toISOString()
+                };
+                
+                this.messages.push(message);
+                this.addMessageToUI(message);
+                this.saveMessages();
+                this.scrollToBottom();
+            }
+
+            scrollToBottom() {
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+
+            async sendMessage() {
+                const text = this.messageInput.value.trim();
+                if (!text) return;
+
+                // Добавляем сообщение пользователя
+                this.addMessage(text, 'user');
+                this.messageInput.value = '';
+
+                // Показываем индикатор набора текста
+                this.showTypingIndicator();
+
+                try {
+                    // Здесь будет вызов API для получения ответа от ИИ
+                    const response = await this.getAIResponse(text);
+                    this.addMessage(response, 'ai');
+                } catch (error) {
+                    console.error('Error getting AI response:', error);
+                    this.addMessage('Извините, произошла ошибка. Попробуйте еще раз.', 'ai');
+                } finally {
+                    this.hideTypingIndicator();
+                }
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.classList.add('active');
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.classList.remove('active');
+            }
+
+            async getAIResponse(message) {
+                try {
+                    // Получаем историю сообщений для контекста
+                    const history = this.messages.slice(-10).map(msg => ({
+                        role: msg.sender === 'user' ? 'user' : 'assistant',
+                        content: msg.text
+                    }));
+
+                    // API вызов к OpenCode
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            model: this.modelSelect.value,
+                            history: history
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('API request failed');
+                    }
+
+                    const data = await response.json();
+                    return data.response || 'Извините, не удалось получить ответ.';
+                } catch (error) {
+                    console.error('Error calling OpenCode API:', error);
+                    return 'Ошибка подключения к OpenCode. Проверьте настройки сервера.';
+                }
+            }
+
+            clearChat() {
+                this.messages = [];
+                this.renderMessages();
+                this.saveMessages();
+            }
+        }
+
+        // Инициализация чата при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            new AIChat();
+        });
+    </script>
+</body>
+</html>
